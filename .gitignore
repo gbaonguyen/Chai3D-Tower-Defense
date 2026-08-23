@@ -7,7 +7,7 @@
 *.o
 *.obj
 # Ngoại lệ: Cho phép push các file 3D model .obj trong assets
-!assets/**/*.obj
+assets
 
 # Precompiled Headers
 *.gch

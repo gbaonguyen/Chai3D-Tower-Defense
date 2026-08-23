@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(TowerDefense CXX)
+project(tower_defense_cpp CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,12 +19,12 @@ link_directories(
 )
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
-add_executable(TowerDefense ${SOURCES})
+add_executable(tower_defense_cpp ${SOURCES})
 
 find_package(OpenGL REQUIRED)
 find_package(Threads REQUIRED)
 
-target_link_libraries(TowerDefense PRIVATE
+target_link_libraries(tower_defense_cpp PRIVATE
     chai3d
     OpenGL::GL
     GLU
