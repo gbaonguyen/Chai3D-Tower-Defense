@@ -6,29 +6,23 @@
 *.lo
 *.o
 *.obj
+# Ngoại lệ: Cho phép push các file 3D model .obj trong assets
+!assets/**/*.obj
 
 # Precompiled Headers
 *.gch
 *.pch
 
-# Linker files
+# Linker & Debugger files
 *.ilk
-
-# Debugger Files
 *.pdb
+*.dwo
 
-# Compiled Dynamic libraries
+# Compiled Dynamic & Static libraries
 *.so
 *.dylib
 *.dll
 *.so.*
-
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
 *.lai
 *.la
 *.a
@@ -43,6 +37,10 @@
 build/
 Build/
 build-*/
+bin/
+
+# Chai3D generated build folders
+externals
 
 # CMake generated files
 CMakeFiles/
@@ -52,18 +50,13 @@ Makefile
 install_manifest.txt
 compile_commands.json
 
-# Temporary files
+# IDE & Temporary files
+.vscode/
+.idea/
 *.tmp
 *.log
 *.bak
 *.swp
-
-# vcpkg
-vcpkg_installed/
-
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
 .cache/
+Testing/
+vcpkg_installed/
