@@ -92,7 +92,7 @@ bool Game::init() {
     m_ground->setUseMaterial(true);
 
     // Bật hiển thị trục tọa độ cho mặt đất (đang nằm ở quanh gốc 0,0,0)
-    m_ground->setShowFrame(true);
+    m_ground->setShowFrame(false);
 
     // (Tùy chọn) Điều chỉnh kích thước/chiều dài của trục tọa độ để dễ nhìn hơn
     m_ground->setFrameSize(5.0);
@@ -146,6 +146,7 @@ void Game::processInput() {
         currentYaw += rotationSpeed;
         m_tower->setYaw(currentYaw);
     }
+
     if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
         currentYaw -= rotationSpeed;
         m_tower->setYaw(currentYaw);
@@ -156,13 +157,60 @@ void Game::processInput() {
         currentPitch -= rotationSpeed;
         m_tower->setPitch(currentPitch);
     }
+
     if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) {
         currentPitch += rotationSpeed;
         m_tower->setPitch(currentPitch);
     }
+
+    if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        if (m_fireCooldown <= 0.0) {
+            // Ép Engine cập nhật ma trận toàn cục trước khi tính toán
+            m_world->computeGlobalPositions(true);
+
+            chai3d::cMultiMesh* barrel = m_tower->getBarrelMesh();
+            if (barrel) {
+                // Lấy vị trí và hướng thật của nòng súng
+                chai3d::cMatrix3d globalRot = barrel->getGlobalRot();
+                chai3d::cVector3d globalPos = barrel->getGlobalPos();
+                
+                // Nòng súng ngắm theo trục X dương
+                chai3d::cVector3d forward = globalRot * chai3d::cVector3d(1.0, 0.0, 0.0);
+                forward.normalize();
+                
+                // Đẩy vị trí spawn ra đầu nòng súng (cộng thêm một khoảng offset)
+                // Bạn có thể cần tăng/giảm số 10.0 để đạn sinh ra ngay mép nòng súng
+                chai3d::cVector3d spawnPos = globalPos + forward * 5.0; 
+                
+                // Sinh tên lửa
+                std::string missilePath = "../assets/models/Missile.obj";
+                Projectile* p = new Projectile(m_world, missilePath, spawnPos, forward, 40.0); // Tốc độ bay: 40.0
+                m_projectiles.push_back(p);
+                
+                // Đặt thời gian chờ giữa 2 lần bắn (0.2 giây)
+                m_fireCooldown = 0.2; 
+            }
+        }
+    }
 }
 
-void Game::update(double dt) {}
+void Game::update(double dt) {
+    // 1. Giảm thời gian hồi chiêu
+    if (m_fireCooldown > 0.0) {
+        m_fireCooldown -= dt;
+    }
+
+    // 2. Cập nhật vị trí tên lửa & Thu hồi bộ nhớ (Garbage collection) các tên lửa đã bay quá xa
+    for (auto it = m_projectiles.begin(); it != m_projectiles.end(); ) {
+        (*it)->update(dt);
+        if ((*it)->isExpired()) {
+            delete *it;
+            it = m_projectiles.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
 
 void Game::render() {
     int width, height;

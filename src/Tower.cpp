@@ -82,6 +82,8 @@ bool Tower::loadBase(const std::string& filePath) {
         }
     }
 
+    m_baseMesh->setShowFrame(true); // Hiển thị trục tọa độ cho bệ tháp
+
     // 2. Tính toán lại Bounding Box trên hệ đỉnh đã xoay
     m_baseMesh->computeBoundaryBox(true);
     chai3d::cVector3d center = m_baseMesh->getBoundaryCenter();
@@ -120,30 +122,48 @@ bool Tower::loadBarrel(const std::string& filePath, double joinHeightOffset) {
         return false;
     }
 
-    chai3d::cMatrix3d rotX;
-    rotX.setAxisAngleRotationDeg(chai3d::cVector3d(0, 1, 0), 180.0);
+    // 1. Ma trận xoay quanh trục Y (180 độ)
+    chai3d::cMatrix3d rotY;
+    rotY.setAxisAngleRotationDeg(chai3d::cVector3d(0, 1, 0), 180.0);
 
+    // 2. Ma trận xoay quanh trục X (ví dụ 90 độ, bạn thay góc tùy ý)
+    chai3d::cMatrix3d rotX;
+    rotX.setAxisAngleRotationDeg(chai3d::cVector3d(1, 0, 0), 90.0);
+
+    // 3. Nhân ma trận để kết hợp 2 phép quay (Thứ tự nhân quyết định thứ tự xoay)
+    chai3d::cMatrix3d rotCombined = rotX * rotY;
+
+    // 4. Áp dụng ma trận kết hợp lên từng đỉnh
     for (unsigned int i = 0; i < m_barrelMesh->getNumMeshes(); ++i) {
         chai3d::cMesh* subMesh = m_barrelMesh->getMesh(i);
         if (subMesh != nullptr) {
             for (unsigned int v = 0; v < subMesh->getNumVertices(); ++v) {
                 chai3d::cVector3d pos = subMesh->m_vertices->getLocalPos(v);
-                subMesh->m_vertices->setLocalPos(v, rotX * pos);
+                subMesh->m_vertices->setLocalPos(v, rotCombined * pos);
             }
         }
     }
 
+    m_barrelMesh->setShowFrame(true); // Hiển thị trục tọa độ cho nòng súng
+    
     // 2. Tính lại Bounding Box của nòng súng sau khi xoay đỉnh
     m_barrelMesh->computeBoundaryBox(true);
+    m_barrelMesh->setShowBoundaryBox(true); // Hiển thị Bounding Box của nòng súng
     chai3d::cVector3d center = m_barrelMesh->getBoundaryCenter();
     chai3d::cVector3d minBox = m_barrelMesh->getBoundaryMin();
     chai3d::cVector3d maxBox = m_barrelMesh->getBoundaryMax();
 
+    std::cout << "[INFO] Nòng súng Bounding Box: Min(" 
+              << minBox.x() << ", " << minBox.y() << ", " << minBox.z() 
+              << ") Max(" << maxBox.x() << ", " << maxBox.y() << ", " << maxBox.z() 
+              << ") Center(" << center.x() << ", " << center.y() << ", " << center.z() 
+              << ")" << std::endl;
+
     // 3. THIẾT LẬP TÂM BẢN LỀ (PIVOT) CỦA NÒNG SÚNG:
     // - Đưa đuôi nòng súng về 0 (minBox.x nếu nòng dọc X, hoặc minBox.y nếu nòng dọc Y)
     // - Căn giữa 2 trục còn lại để trục quay đi xuyên qua lõi nòng súng.
-    chai3d::cVector3d offset(-minBox.x() - 500 , -center.y(), -maxBox.z() - 100.0); // Bù trừ thêm 100.0 để nòng súng lùi vào trong khe ngàm của bệ tháp
 
+    chai3d::cVector3d offset(-minBox.x(), -minBox.y(), -100); // Dời đuôi nòng súng về 0 và căn giữa trục Z
     for (unsigned int i = 0; i < m_barrelMesh->getNumMeshes(); ++i) {
         chai3d::cMesh* subMesh = m_barrelMesh->getMesh(i);
         if (subMesh != nullptr) {
@@ -157,9 +177,9 @@ bool Tower::loadBarrel(const std::string& filePath, double joinHeightOffset) {
     // 5. ĐẶT VỊ TRÍ KHỚP NỐI (LOCAL POSITION):
     // Dịch nòng súng lên khe ngàm phía trước của bệ tháp.
     // Tùy chỉnh x_mount và y_mount để nòng súng nằm lọt thỏm vào đúng rãnh ngàm.
-    double x_mount = 50.0;   // Dịch tới / lui theo trục Đỏ
-    double y_mount = 0.0;    // Dịch trái / phải theo trục Xanh lá
-    double z_mount = joinHeightOffset; // Chiều cao ngàm
+    double x_mount = -400.0;   // Dịch tới / lui theo trục Đỏ
+    double y_mount = -50.0;    // Dịch trái / phải theo trục Xanh lá
+    double z_mount = 0.0; // Chiều cao ngàm
 
     m_barrelMesh->setLocalPos(x_mount, y_mount, z_mount);
 
@@ -195,8 +215,8 @@ void Tower::setScale(double scale) {
 void Tower::setPitch(double angleRad) {
     // Giới hạn góc ngẩng từ -10 độ (-0.17 rad) đến +60 độ (+1.05 rad)
     // để tránh nòng súng bị đâm xuyên sàn hoặc lộn ra sau
-    m_pitch = chai3d::cClamp(angleRad, 0.0, 2 * M_PI / 3); // Giới hạn từ 0 đến 120 độ (2pi/3 rad)
-
+    m_pitch = chai3d::cClamp(angleRad, 0.0, M_PI / 4); // Giới hạn từ 0 đến 60 độ (pi/3 rad)
+    
     if (m_barrelMesh) {
         chai3d::cMatrix3d rot;
         // Trục quay ngẩng là trục Y (trục ngang cục bộ của nòng súng)

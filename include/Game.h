@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 #include "Tower.h"
+#include "Projectile.h"
+#include <vector>
 
 
 class Game {
@@ -41,6 +43,10 @@ private:
 
 private:
     Tower* m_tower = nullptr;
+
+private:
+    std::vector<Projectile*> m_projectiles;
+    double m_fireCooldown = 0.0;
 
 
 
