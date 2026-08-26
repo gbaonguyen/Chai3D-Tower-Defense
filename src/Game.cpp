@@ -200,12 +200,19 @@ void Game::update(double dt) {
         m_fireCooldown -= dt;
     }
 
-    // 2. Cập nhật vị trí tên lửa & Thu hồi bộ nhớ (Garbage collection) các tên lửa đã bay quá xa
+    // 2. Cập nhật vị trí tên lửa & Thu hồi bộ nhớ
     for (auto it = m_projectiles.begin(); it != m_projectiles.end(); ) {
-        (*it)->update(dt);
-        if ((*it)->isExpired()) {
-            delete *it;
+        Projectile* p = *it;
+        if (p == nullptr) {
             it = m_projectiles.erase(it);
+            continue;
+        }
+
+        p->update(dt);
+
+        if (p->isExpired()) {
+            delete p;                      // Destructor của Projectile sẽ tự lo việc gỡ mesh
+            it = m_projectiles.erase(it);  // Xóa khỏi danh sách quản lý
         } else {
             ++it;
         }

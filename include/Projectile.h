@@ -6,7 +6,7 @@ class Projectile {
 public:
     // Thêm tham số modelPath để truyền đường dẫn file Missile.obj
     Projectile(chai3d::cWorld* world, const std::string& modelPath, const chai3d::cVector3d& startPos, const chai3d::cVector3d& direction, double speed);
-    ~Projectile();
+    ~Projectile();  
 
     void update(double dt);
     bool isExpired() const;

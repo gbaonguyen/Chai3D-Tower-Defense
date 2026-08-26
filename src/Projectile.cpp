@@ -50,9 +50,13 @@ Projectile::Projectile(chai3d::cWorld* world, const std::string& modelPath, cons
 }
 
 Projectile::~Projectile() {
-    if (m_world && m_mesh) {
-        m_world->removeChild(m_mesh);
+    // Tự động gỡ mesh ra khỏi thế giới / node cha khi đối tượng bị hủy
+    if (m_mesh != nullptr) {
+        if (m_mesh->getParent() != nullptr) {
+            m_mesh->getParent()->removeChild(m_mesh);
+        }
         delete m_mesh;
+        m_mesh = nullptr;
     }
 }
 
