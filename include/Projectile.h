@@ -4,24 +4,22 @@
 
 class Projectile {
 public:
-    // Thêm tham số modelPath để truyền đường dẫn file Missile.obj
     Projectile(chai3d::cWorld* world, const std::string& modelPath, const chai3d::cVector3d& startPos, const chai3d::cVector3d& direction, double speed);
     ~Projectile();  
 
     void update(double dt);
     bool isExpired() const;
 
-    chai3d::cMultiMesh* getMesh() const { return m_mesh; }
-    double getCollisionRadius() const { return m_collisionRadius; }
-    void kill() { m_lifeTime = m_maxLifeTime; } // Mark the projectile as "killed" or "removed"
+    // Trích xuất tọa độ cục bộ (Local Position) hiện tại của viên đạn
+    chai3d::cVector3d getPosition() const { 
+        return (m_mesh != nullptr) ? m_mesh->getLocalPos() : chai3d::cVector3d(0, 0, 0); 
+    }
 
 private:
     chai3d::cWorld* m_world;
-    chai3d::cMultiMesh* m_mesh;   // Mô hình 3D của tên lửa
-    chai3d::cVector3d m_velocity; // Vận tốc bay (velocity)
+    chai3d::cMultiMesh* m_mesh;   
+    chai3d::cVector3d m_velocity; 
     
     double m_lifeTime;
     double m_maxLifeTime;
-
-    double m_collisionRadius; // Bán kính va chạm (collision radius)
 };

@@ -1,121 +1,71 @@
 #include "Enemy.h"
 #include <iostream>
 
-Enemy::Enemy(chai3d::cWorld* world, const std::string& modelPath, const std::vector<chai3d::cVector3d>& waypoints, double speed, double scale, const chai3d::cMatrix3d& preRotation)
-    : m_world(world), 
-      m_mesh(nullptr), 
-      m_waypoints(waypoints), 
-      m_currentWaypointIndex(0), 
-      m_speed(speed), 
-      m_reachedEnd(false) 
+Enemy::Enemy(chai3d::cWorld* world, const EnemyConfig& config, const std::vector<chai3d::cVector3d>& path)
+    : m_world(world), m_config(config), m_path(path), m_currentWaypointIndex(0), m_mesh(nullptr) 
 {
     m_mesh = new chai3d::cMultiMesh();
-    if (!m_mesh->loadFromFile(modelPath)) return;
-
-    m_mesh->scale(scale);
-
-    // 1. Áp dụng tiền xử lý xoay (Vertex Pre-rotation)
-    for (unsigned int i = 0; i < m_mesh->getNumMeshes(); ++i) {
-        chai3d::cMesh* subMesh = m_mesh->getMesh(i);
-        if (subMesh != nullptr) {
-            for (unsigned int v = 0; v < subMesh->getNumVertices(); ++v) {
-                chai3d::cVector3d pos = subMesh->m_vertices->getLocalPos(v);
-                subMesh->m_vertices->setLocalPos(v, preRotation * pos);
-            }
-            subMesh->markForUpdate(); // Đánh dấu cập nhật GPU
-        }
+    if (!m_mesh->loadFromFile(m_config.modelPath)) {
+        std::cerr << "[ERROR] Không thể load Enemy: " << m_config.modelPath << std::endl;
+        return;
     }
 
-    // 2. DYNAMIC CENTERING (Đưa vật về 0, 0, 0)
-    m_mesh->computeBoundaryBox(true);
-    chai3d::cVector3d center = m_mesh->getBoundaryCenter();
-    double minZ = m_mesh->getBoundaryMin().z();
-    
-    // Tạo vector ngược hướng để dời tâm hình học về gốc và đưa mặt đáy lên Z = 0
-    chai3d::cVector3d offset(-center.x(), -center.y(), -minZ); 
-    
-    for (unsigned int i = 0; i < m_mesh->getNumMeshes(); ++i) {
-        chai3d::cMesh* subMesh = m_mesh->getMesh(i);
-        if (subMesh != nullptr) {
-            subMesh->offsetVertices(offset);
-            subMesh->markForUpdate(); // Đánh dấu cập nhật GPU
-        }
-    }
-    
-    m_mesh->computeBoundaryBox(true); 
-    m_mesh->setShowBoundaryBox(true);
+    m_mesh->scale(m_config.scale);
     m_mesh->computeAllNormals();
     m_mesh->setUseMaterial(true);
 
-    // 3. TÍNH BÁN KÍNH VA CHẠM (Bounding Sphere Radius)
-    // Dùng nửa độ dài đường chéo Bounding Box làm bán kính
-    m_collisionRadius = m_mesh->getBoundaryMax().length() * 0.5;
-
-    // Initialize the starting coordinate (tọa độ xuất phát)
-    if (!m_waypoints.empty()) {
-        m_mesh->setLocalPos(m_waypoints[0]);
-        m_currentWaypointIndex = 1; // Target the subsequent node
-    } else {
-        m_reachedEnd = true;
+    if (!m_path.empty()) {
+        chai3d::cVector3d startPos = m_path[0];
+        startPos.z(startPos.z() + m_config.zOffset); // Áp dụng độ cao (Offset)
+        m_mesh->setLocalPos(startPos);
     }
 
-    if (m_world) {
-        m_world->addChild(m_mesh);
-    }
+    m_world->addChild(m_mesh);
 }
 
 Enemy::~Enemy() {
-    if (m_mesh != nullptr) {
-        if (m_mesh->getParent() != nullptr) {
-            m_mesh->getParent()->removeChild(m_mesh);
-        }
+    if (m_mesh && m_mesh->getParent()) {
+        m_mesh->getParent()->removeChild(m_mesh);
         delete m_mesh;
-        m_mesh = nullptr;
     }
 }
 
 void Enemy::update(double dt) {
-    if (m_reachedEnd || m_waypoints.empty()) return;
+    if (hasReachedDestination() || !m_mesh) return;
 
     chai3d::cVector3d currentPos = m_mesh->getLocalPos();
-    chai3d::cVector3d targetPos = m_waypoints[m_currentWaypointIndex];
+    chai3d::cVector3d targetPos = m_path[m_currentWaypointIndex];
+    targetPos.z(targetPos.z() + m_config.zOffset); // Giữ nguyên độ cao mong muốn
 
-    chai3d::cVector3d direction = targetPos - currentPos;
-    double distance = direction.length();
+    chai3d::cVector3d dir = targetPos - currentPos;
+    double distanceToTarget = dir.length();
 
-    // Proximity threshold (ngưỡng tiệm cận) to determine if a waypoint is reached
-    if (distance < 0.1) {
+    // Nếu đã đến gần Waypoint (Sai số < 1.0 unit), chuyển sang điểm tiếp theo
+    if (distanceToTarget < 1.0) {
         m_currentWaypointIndex++;
-        if (m_currentWaypointIndex >= m_waypoints.size()) {
-            m_reachedEnd = true;
-        }
-        return;
+        return; 
     }
 
-    // Normalize trajectory (chuẩn hóa quỹ đạo) and calculate velocity vector
-    direction.normalize();
-    chai3d::cVector3d velocity = direction * m_speed;
-    
-    // Spatial interpolation (nội suy không gian) for movement
-    m_mesh->setLocalPos(currentPos + velocity * dt);
+    // Bình chuẩn hóa vector hướng (Normalize) và di chuyển
+    dir.normalize();
+    m_mesh->setLocalPos(currentPos + dir * m_config.speed * dt);
 
-    // Dynamic rotation to face the movement vector (hướng trục quay theo vector di chuyển)
-    chai3d::cVector3d defaultDir(1.0, 0.0, 0.0); // Assuming the model's forward axis is +X
-    double angle = chai3d::cAngle(defaultDir, direction);
-    chai3d::cVector3d axis = chai3d::cCross(defaultDir, direction);
+    // Tính toán góc xoay để đầu kẻ địch luôn hướng về Waypoint
+    chai3d::cVector3d defaultForward(1.0, 0.0, 0.0); // Mặc định model hướng trục +Ox
+    double angle = chai3d::cAngle(defaultForward, dir);
+    chai3d::cVector3d axis = chai3d::cCross(defaultForward, dir);
     
-    if (axis.length() > 0.001) { 
+    if (axis.length() < 0.001) {
+        axis = (defaultForward.dot(dir) < 0) ? chai3d::cVector3d(0, 0, 1) : chai3d::cVector3d(1, 0, 0);
+    } else {
         axis.normalize();
-        chai3d::cMatrix3d rot;
-        rot.setAxisAngleRotationRad(axis, angle);
-        m_mesh->setLocalRot(rot);
     }
+
+    chai3d::cMatrix3d rot;
+    rot.setAxisAngleRotationRad(axis, angle);
+    m_mesh->setLocalRot(rot);
 }
 
-void Enemy::setShowFrame(bool show, double size) {
-    if (m_mesh) {
-        m_mesh->setShowFrame(show);
-        m_mesh->setFrameSize(size, true);
-
-    }
+bool Enemy::hasReachedDestination() const {
+    return m_currentWaypointIndex >= m_path.size();
 }

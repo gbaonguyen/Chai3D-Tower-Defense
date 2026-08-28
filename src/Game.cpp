@@ -1,7 +1,5 @@
 #include "Game.h"
 #include <iostream>
-#include <cstdlib>
-#include <ctime>
 
 Game::Game() 
     : m_window(nullptr),
@@ -37,9 +35,6 @@ void Game::windowSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 bool Game::init() {
-
-    srand(static_cast<unsigned int>(time(nullptr)));
-
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW!" << std::endl;
         return false;
@@ -88,8 +83,8 @@ bool Game::init() {
     // 4. Mặt sàn đấu trường
     m_ground = new chai3d::cMesh();
     m_world->addChild(m_ground);
-    chai3d::cCreateBox(m_ground, 1000.0, 1000.0, 0.1);
-    m_ground->setLocalPos(0.0, 0.0, -1.2);
+    chai3d::cCreateBox(m_ground, 16.0, 16.0, 0.1);
+    m_ground->setLocalPos(0.0, 0.0, -0.1);
     m_ground->m_material->setGrayDark();
     m_ground->m_material->m_ambient.set(0.2f, 0.2f, 0.2f);
     m_ground->m_material->m_diffuse.set(0.4f, 0.4f, 0.4f);
@@ -97,38 +92,65 @@ bool Game::init() {
     m_ground->setUseMaterial(true);
 
     // Bật hiển thị trục tọa độ cho mặt đất (đang nằm ở quanh gốc 0,0,0)
-    m_ground->setShowFrame(true);
+    m_ground->setShowFrame(false); // Ban đầu tắt hiển thị trục tọa độ
 
     // (Tùy chọn) Điều chỉnh kích thước/chiều dài của trục tọa độ để dễ nhìn hơn
     m_ground->setFrameSize(5.0);
 
     // 5. Khởi tạo và nạp Tháp (PHẢI NẰM SAU KHI M_WORLD ĐÃ ĐƯỢC NEW)
     m_tower = new Tower(m_world);
-    std::string basePath = "../assets/models/turret_base.obj";
-    std::string barrelPath = "../assets/models/turret_barrrel.obj";
-
+    
+    // Update paths to the new directory structure
+    std::string basePath = "../assets/new_models/turret_base.obj";
+    std::string barrelPath = "../assets/new_models/turret_barrel.obj";
 
     if (m_tower->loadBase(basePath)) {  
-        // Retrieve the maximum Z-height of the base for relative placement
-        double joinHeight = m_tower->getBaseMesh()->getBoundaryMax().z() * 0.55;
-        
-        if (m_tower->loadBarrel(barrelPath, joinHeight)) {
-            m_tower->setScale(0.003);
+        // Removed the manual joinHeight calculation since the new barrel is pre-positioned (đã được định vị sẵn).
+        if (m_tower->loadBarrel(barrelPath)) {
+            // Removed m_tower->setScale() assuming the new models are pre-scaled.
             m_tower->setPosition(chai3d::cVector3d(0.0, 0.0, 0.0));
         }
     }
 
-
-    // Add this right before "m_isRunning = true; return true;"[cite: 1]
     
-    // Define a sequential trajectory (quỹ đạo tuần tự) across the terrain
-    // Chạy từ trong (+15) ra ngoài (-15) dọc theo trục Ox (Y = 0)
-    m_pathWaypoints = {
-        chai3d::cVector3d(15.0, 0.0, -0.1),  
-        chai3d::cVector3d(-15.0, 0.0, -0.1)  
-    };
+    // THIẾT LẬP ĐƯỜNG BAY THỬ NGHIỆM (TESTING WAYPOINTS)
+    // Mọi kẻ địch đều xuất phát từ xa trên trục +Ox (Y = 0) và tiến thẳng về phía tháp (dừng ở X = 3.0)
 
-    m_enemySpawnTimer = 2.0; // Wait 2 seconds before the first spawn
+    // 1. Xe Tăng (Dưới đất, Z = 0) - Xuất phát gần nhất
+    std::vector<chai3d::cVector3d> pathTank = {
+        chai3d::cVector3d(20.0, 0.0, 0.0), 
+        chai3d::cVector3d(3.0, 0.0, 0.0)
+    };
+    EnemyConfig configTank = {"../assets/new_models/tank.obj", 1.0, 0.0, 1.5};
+
+    // 2. Aircraft 1 (Bay thấp, Z = 3.0) - Xuất phát xa hơn một chút
+    std::vector<chai3d::cVector3d> pathAir1 = {
+        chai3d::cVector3d(25.0, 0.0, 0.0), 
+        chai3d::cVector3d(3.0, 0.0, 0.0)
+    };
+    EnemyConfig configAir1 = {"../assets/new_models/aircraft_1.obj", 1.0, 3.0, 2.0};
+
+    // 3. Aircraft 2 (Bay vừa, Z = 6.0)
+    std::vector<chai3d::cVector3d> pathAir2 = {
+        chai3d::cVector3d(30.0, 0.0, 0.0), 
+        chai3d::cVector3d(3.0, 0.0, 0.0)
+    };
+    EnemyConfig configAir2 = {"../assets/new_models/aircraft_2.obj", 1.0, 6.0, 2.5};
+
+    // 4. Spaceship (Bay cao nhất, Z = 9.0) - Xuất phát xa nhất
+    std::vector<chai3d::cVector3d> pathSpace = {
+        chai3d::cVector3d(35.0, 0.0, 0.0), 
+        chai3d::cVector3d(3.0, 0.0, 0.0)
+    };
+    EnemyConfig configSpace = {"../assets/new_models/space_ship.obj", 1.0, 9.0, 3.0};
+
+    // Nạp vào hệ thống (Load into system)
+    // m_enemies.push_back(new Enemy(m_world, configTank, pathTank));
+    // m_enemies.push_back(new Enemy(m_world, configAir1, pathAir1));
+    // m_enemies.push_back(new Enemy(m_world, configAir2, pathAir2));
+    // m_enemies.push_back(new Enemy(m_world, configSpace, pathSpace));
+
+    srand(static_cast<unsigned int>(time(nullptr)));
 
     m_isRunning = true;
     return true;
@@ -163,7 +185,6 @@ void Game::processInput() {
         currentYaw += rotationSpeed;
         m_tower->setYaw(currentYaw);
     }
-
     if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
         currentYaw -= rotationSpeed;
         m_tower->setYaw(currentYaw);
@@ -171,40 +192,39 @@ void Game::processInput() {
 
     // 2. Ngẩng nòng súng (Pitch) - Phím Lên / Xuống
     if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS) {
+        currentPitch += rotationSpeed;
+        m_tower->setPitch(currentPitch);
+    }
+    if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) {
         currentPitch -= rotationSpeed;
         m_tower->setPitch(currentPitch);
     }
 
-    if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-        currentPitch += rotationSpeed;
-        m_tower->setPitch(currentPitch);
-    }
+
 
     if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS) {
         if (m_fireCooldown <= 0.0) {
-            // Ép Engine cập nhật ma trận toàn cục trước khi tính toán
+            // Mandate a global position update to fetch accurate orientation (Bắt buộc cập nhật vị trí toàn cục để lấy hướng chính xác)
             m_world->computeGlobalPositions(true);
 
             chai3d::cMultiMesh* barrel = m_tower->getBarrelMesh();
             if (barrel) {
-                // Lấy vị trí và hướng thật của nòng súng
                 chai3d::cMatrix3d globalRot = barrel->getGlobalRot();
                 chai3d::cVector3d globalPos = barrel->getGlobalPos();
                 
-                // Nòng súng ngắm theo trục X dương
+                // Formulate the forward vector by transforming the +Ox vector (Tạo vector tiến bằng cách biến đổi vector +Ox)
                 chai3d::cVector3d forward = globalRot * chai3d::cVector3d(1.0, 0.0, 0.0);
                 forward.normalize();
                 
-                // Đẩy vị trí spawn ra đầu nòng súng (cộng thêm một khoảng offset)
-                // Bạn có thể cần tăng/giảm số 10.0 để đạn sinh ra ngay mép nòng súng
-                chai3d::cVector3d spawnPos = globalPos + forward * 5.0; 
+                // Preclude clipping (Ngăn chặn xuyên thấu) by projecting the spawn point to the barrel's apex. 
+                // Adjust the '400.0' multiplier based on your barrel's actual length.
+                double barrelLengthOffset = 2.0; 
+                chai3d::cVector3d spawnPos = globalPos + forward * barrelLengthOffset; 
                 
-                // Sinh tên lửa
-                std::string missilePath = "../assets/models/Missile.obj";
-                Projectile* p = new Projectile(m_world, missilePath, spawnPos, forward, 40.0); // Tốc độ bay: 40.0
+                std::string missilePath = "../assets/new_models/missile.obj";
+                Projectile* p = new Projectile(m_world, missilePath, spawnPos, forward, 20.0); // Speed = 500.0
                 m_projectiles.push_back(p);
                 
-                // Đặt thời gian chờ giữa 2 lần bắn (0.2 giây)
                 m_fireCooldown = 0.2; 
             }
         }
@@ -212,100 +232,57 @@ void Game::processInput() {
 }
 
 void Game::update(double dt) {
-    // 1. Giảm thời gian hồi chiêu
+    // 1. Quản lý thời gian bắn đạn
     if (m_fireCooldown > 0.0) {
         m_fireCooldown -= dt;
     }
 
-    // 2. Cập nhật vị trí tên lửa & Thu hồi bộ nhớ
+    // 2. Logic sinh kẻ địch ngẫu nhiên theo thời gian
+    m_enemySpawnTimer -= dt;
+    if (m_enemySpawnTimer <= 0.0) {
+        spawnRandomEnemy();
+        // Đặt lại thời gian đếm ngược (Reset the timer)
+        m_enemySpawnTimer = m_enemySpawnInterval; 
+    }
+
+    // Xác định bán kính tối đa của bản đồ (có thể tùy chỉnh theo kích thước sân đấu của bạn)
+    const double MAP_RADIUS = 150.0; 
+
+    // Duyệt qua std::vector chứa các viên đạn
     for (auto it = m_projectiles.begin(); it != m_projectiles.end(); ) {
         Projectile* p = *it;
+        
+        // Kiểm tra an toàn để tránh lỗi con trỏ rỗng (Null Pointer Exception)
         if (p == nullptr) {
             it = m_projectiles.erase(it);
             continue;
         }
 
+        // 1. Cập nhật vị trí viên đạn di chuyển lên phía trước dựa trên dt
         p->update(dt);
 
-        if (p->isExpired()) {
-            delete p;                      // Destructor của Projectile sẽ tự lo việc gỡ mesh
-            it = m_projectiles.erase(it);  // Xóa khỏi danh sách quản lý
+        // 2. Tính toán khoảng cách vô hướng từ gốc tọa độ (0,0,0) đến vị trí viên đạn
+        double distanceFromOrigin = p->getPosition().length();
+
+        // 3. Đánh giá xem đạn đã bay vượt ranh giới hay chưa
+        bool isOutOfBounds = distanceFromOrigin > MAP_RADIUS;
+        
+        // Nếu đạn đã hết vòng đời (Time-to-live) HOẶC bay quá giới hạn bản đồ
+        if (p->isExpired() || isOutOfBounds) {
+            // Lệnh 'delete' sẽ kích hoạt Destructor trong Projectile.cpp, 
+            // tự động gỡ mảng lưới (Mesh) khỏi cWorld để thu hồi bộ nhớ (Memory Allocation).
+            delete p;                      
+            
+            // Xóa con trỏ đạn khỏi std::vector
+            it = m_projectiles.erase(it);  
         } else {
+            // Tiếp tục kiểm tra viên đạn tiếp theo
             ++it;
         }
     }
 
 
-    m_enemySpawnTimer -= dt;
-    if (m_enemySpawnTimer <= 0.0) { 
-        std::string models[] = {
-            "../assets/models/tank_project.obj", // Index 0
-            "../assets/models/aircraft1.obj",    // Index 1
-            "../assets/models/aircraft2.obj",    // Index 2
-            "../assets/models/spaceship.obj"     // Index 3
-        };
-        
-        int modelIndex = rand() % 4; 
-        
-        double speed = 0.0;
-        double scale = 0.0;
-        double pathZ = -0.1; // Default elevation (độ cao mặc định)
-        
-        chai3d::cMatrix3d preRot;
-        preRot.identity();
-
-        if (modelIndex == 0) { // Tank
-            speed = 1.5 + (rand() % 15) / 10.0; 
-            scale = 0.1;
-            pathZ = -0.1; // Terrestrial trajectory (quỹ đạo mặt đất)
-            preRot.setAxisAngleRotationDeg(chai3d::cVector3d(1, 0, 0), 90.0);
-        }
-        else if (modelIndex == 1 ) { // big aircraft
-            speed = 3.5 + (rand() % 25) / 10.0; 
-            scale = 0.0005;
-            pathZ = 4.0; // Aerial trajectory (quỹ đạo trên không)
-            chai3d::cMatrix3d rZ, rY;
-            rZ.setAxisAngleRotationDeg(chai3d::cVector3d(0, 0, 1), -90.0);
-            rY.setAxisAngleRotationDeg(chai3d::cVector3d(0, 1, 0), -90.0);
-            preRot = rY * rZ; 
-        }
-
-        else if (modelIndex == 2) { // small aircraft
-            speed = 3.5 + (rand() % 25) / 10.0; 
-            scale = 0.015;
-            pathZ = 4.0; // Aerial trajectory (quỹ đạo trên không)
-            chai3d::cMatrix3d rX, rZ;
-            rX.setAxisAngleRotationDeg(chai3d::cVector3d(1, 0, 0), 90.0);
-            rZ.setAxisAngleRotationDeg(chai3d::cVector3d(0, 0, 1), 90.0);
-            preRot = rZ * rX;
-        }
-        else if (modelIndex == 3) { // Spaceship
-            speed = 4.0 + (rand() % 30) / 10.0; 
-            scale = 0.5;
-            pathZ = 5.0; // Higher altitude (độ cao lớn hơn)
-            chai3d::cMatrix3d rZ, rY;
-            rZ.setAxisAngleRotationDeg(chai3d::cVector3d(0, 0, 1), -90.0);
-            rY.setAxisAngleRotationDeg(chai3d::cVector3d(0, 1, 0), -90.0);
-            preRot = rY * rZ;
-        }
-        
-        // Determinate linear path along the X-axis (Đường thẳng cố định dọc trục X)
-        // Y is strictly set to 0.0 to eliminate lateral randomness
-        std::vector<chai3d::cVector3d> fixedPath = {
-            chai3d::cVector3d(15.0, 0.0, pathZ),
-            chai3d::cVector3d(-15.0, 0.0, pathZ)
-        };
-
-        Enemy* newEnemy = new Enemy(m_world, models[modelIndex], fixedPath, speed, scale, preRot);
-        m_enemies.push_back(newEnemy);
-
-        newEnemy->setShowFrame(true, 1.0); // Show local axes for debugging
-
-        m_spawnCounter++;
-        m_enemySpawnTimer = 1.0 + (rand() % 25) / 10.0; 
-    }
-
-    // 4. Enemy Update & Deallocation (Cập nhật & thu hồi bộ nhớ)
+    // Cập nhật di chuyển cho Kẻ địch
     for (auto it = m_enemies.begin(); it != m_enemies.end(); ) {
         Enemy* e = *it;
         if (e == nullptr) {
@@ -315,48 +292,47 @@ void Game::update(double dt) {
 
         e->update(dt);
 
-        if (e->hasReachedEnd()) {
+        // Xóa kẻ địch nếu đã bay đến trạm cuối cùng (Waypoints completed)
+        if (e->hasReachedDestination()) {
             delete e;
             it = m_enemies.erase(it);
         } else {
             ++it;
         }
     }
+}
 
-    m_world->computeGlobalPositions(true);
+void Game::spawnRandomEnemy() {
+    // Sinh số ngẫu nhiên từ 0 đến 3 (Random integer between 0 and 3)
+    int enemyType = rand() % 4; 
 
-    for (auto* p : m_projectiles) {
-        if (p->isExpired()) continue;
-        
-        chai3d::cVector3d pPos = p->getMesh()->getGlobalPos();
-        double pRadius = p->getCollisionRadius();
+    EnemyConfig config;
+    std::vector<chai3d::cVector3d> path;
 
-        for (auto* e : m_enemies) {
-            if (e->hasReachedEnd()) continue;
+    // Thiết lập chung: Tất cả đều đi từ X=35.0 tiến về X=3.0 trên trục +Ox
+    double startX = 35.0;
+    double endX = 3.0;
 
-            chai3d::cVector3d ePos = e->getMesh()->getGlobalPos();
-            double eRadius = e->getCollisionRadius();
-
-            // Tính khoảng cách bình phương (Squared distance)
-            double distSq = (pPos - ePos).lengthsq();
-            
-            // Tính tổng bán kính bình phương (Sum of radii squared)
-            double radiusSum = pRadius + eRadius;
-            double radiusSumSq = radiusSum * radiusSum;
-
-            if (distSq <= radiusSumSq) {
-                // Va chạm thành công!
-                std::cout << "[COLLISION] Bắn trúng kẻ địch!" << std::endl;
-                
-                // Tiêu diệt cả hai (Đánh dấu để bộ dọn rác tự xóa ở frame tiếp theo)
-                p->kill(); 
-                e->kill(); 
-                
-                // Mỗi viên đạn chỉ trúng 1 quái, thoát vòng lặp kẻ địch hiện tại
-                break; 
-            }
-        }
+    switch (enemyType) {
+        case 0: // Tank (Mặt đất)
+            path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
+            config = {"../assets/new_models/tank.obj", 1.0, 0.0, 2.0};
+            break;
+        case 1: // Aircraft 1 (Tầm thấp)
+            path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
+            config = {"../assets/new_models/aircraft_1.obj", 0.2, 3.0, 2.5};
+            break;
+        case 2: // Aircraft 2 (Tầm trung)
+            path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
+            config = {"../assets/new_models/aircraft_2.obj", 1.0, 6.0, 3.0};
+            break;
+        case 3: // Spaceship (Tầm cao)
+            path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
+            config = {"../assets/new_models/space_ship.obj", 1.0, 9.0, 4.0};
+            break;
     }
+
+    m_enemies.push_back(new Enemy(m_world, config, path));
 }
 
 void Game::render() {
@@ -442,7 +418,7 @@ void Game::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
     // Thu phóng (Zoom in / Zoom out)
     game->m_camRadius -= yoffset * 1.0;
-    game->m_camRadius = chai3d::cClamp(game->m_camRadius, 3.0, 100.0); // Giới hạn tầm zoom
+    game->m_camRadius = chai3d::cClamp(game->m_camRadius, 3.0, 40.0); // Giới hạn tầm zoom
 
     game->updateCamera();
 }

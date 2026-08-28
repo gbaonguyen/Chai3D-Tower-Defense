@@ -9,17 +9,17 @@ public:
     ~Tower();
 
     bool loadBase(const std::string& filePath);
-    bool loadBarrel(const std::string& filePath, double joinHeightOffset);
+    
+    // Removed joinHeightOffset parameter
+    bool loadBarrel(const std::string& filePath);
 
     void setPosition(const chai3d::cVector3d& pos);
     void setScale(double scale);
 
-    // 2. Declare Yaw rotation method
     void setYaw(double angleRad); 
     void setPitch(double angleRad); 
     double getPitch() const { return m_pitch; }
     double getYaw() const { return m_yaw; }
-
 
     chai3d::cMultiMesh* getBaseMesh() const { return m_baseMesh; }
     chai3d::cMultiMesh* getBarrelMesh() const { return m_barrelMesh; }
