@@ -1,5 +1,7 @@
 #include "Game.h"
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
 
 Game::Game() 
     : m_window(nullptr),
@@ -35,6 +37,9 @@ void Game::windowSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 bool Game::init() {
+
+    srand(static_cast<unsigned int>(time(nullptr)));
+
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW!" << std::endl;
         return false;
@@ -83,8 +88,8 @@ bool Game::init() {
     // 4. Mặt sàn đấu trường
     m_ground = new chai3d::cMesh();
     m_world->addChild(m_ground);
-    chai3d::cCreateBox(m_ground, 16.0, 16.0, -1);
-    m_ground->setLocalPos(0.0, 0.0, -0.1);
+    chai3d::cCreateBox(m_ground, 1000.0, 1000.0, 0.1);
+    m_ground->setLocalPos(0.0, 0.0, -1.2);
     m_ground->m_material->setGrayDark();
     m_ground->m_material->m_ambient.set(0.2f, 0.2f, 0.2f);
     m_ground->m_material->m_diffuse.set(0.4f, 0.4f, 0.4f);
@@ -92,7 +97,7 @@ bool Game::init() {
     m_ground->setUseMaterial(true);
 
     // Bật hiển thị trục tọa độ cho mặt đất (đang nằm ở quanh gốc 0,0,0)
-    m_ground->setShowFrame(false);
+    m_ground->setShowFrame(true);
 
     // (Tùy chọn) Điều chỉnh kích thước/chiều dài của trục tọa độ để dễ nhìn hơn
     m_ground->setFrameSize(5.0);
@@ -112,6 +117,18 @@ bool Game::init() {
             m_tower->setPosition(chai3d::cVector3d(0.0, 0.0, 0.0));
         }
     }
+
+
+    // Add this right before "m_isRunning = true; return true;"[cite: 1]
+    
+    // Define a sequential trajectory (quỹ đạo tuần tự) across the terrain
+    // Chạy từ trong (+15) ra ngoài (-15) dọc theo trục Ox (Y = 0)
+    m_pathWaypoints = {
+        chai3d::cVector3d(15.0, 0.0, -0.1),  
+        chai3d::cVector3d(-15.0, 0.0, -0.1)  
+    };
+
+    m_enemySpawnTimer = 2.0; // Wait 2 seconds before the first spawn
 
     m_isRunning = true;
     return true;
@@ -217,6 +234,94 @@ void Game::update(double dt) {
             ++it;
         }
     }
+
+
+m_enemySpawnTimer -= dt;
+    if (m_enemySpawnTimer <= 0.0) { 
+        std::string models[] = {
+            "../assets/models/tank_project.obj", // Index 0
+            "../assets/models/aircraft1.obj",    // Index 1
+            "../assets/models/aircraft2.obj",    // Index 2
+            "../assets/models/spaceship.obj"     // Index 3
+        };
+        
+        int modelIndex = rand() % 4; 
+        
+        double speed = 0.0;
+        double scale = 0.0;
+        double pathZ = -0.1; // Default elevation (độ cao mặc định)
+        
+        chai3d::cMatrix3d preRot;
+        preRot.identity();
+
+        if (modelIndex == 0) { // Tank
+            speed = 1.5 + (rand() % 15) / 10.0; 
+            scale = 0.1;
+            pathZ = -0.1; // Terrestrial trajectory (quỹ đạo mặt đất)
+            preRot.setAxisAngleRotationDeg(chai3d::cVector3d(1, 0, 0), 90.0);
+        }
+        else if (modelIndex == 1 ) { // big aircraft
+            speed = 3.5 + (rand() % 25) / 10.0; 
+            scale = 0.0005;
+            pathZ = 4.0; // Aerial trajectory (quỹ đạo trên không)
+            chai3d::cMatrix3d rZ, rY;
+            rZ.setAxisAngleRotationDeg(chai3d::cVector3d(0, 0, 1), -90.0);
+            rY.setAxisAngleRotationDeg(chai3d::cVector3d(0, 1, 0), -90.0);
+            preRot = rY * rZ; 
+        }
+
+        else if (modelIndex == 2) { // small aircraft
+            speed = 3.5 + (rand() % 25) / 10.0; 
+            scale = 0.015;
+            pathZ = 4.0; // Aerial trajectory (quỹ đạo trên không)
+            chai3d::cMatrix3d rX, rZ;
+            rX.setAxisAngleRotationDeg(chai3d::cVector3d(1, 0, 0), 90.0);
+            rZ.setAxisAngleRotationDeg(chai3d::cVector3d(0, 0, 1), 90.0);
+            preRot = rZ * rX;
+        }
+        else if (modelIndex == 3) { // Spaceship
+            speed = 4.0 + (rand() % 30) / 10.0; 
+            scale = 0.5;
+            pathZ = 5.0; // Higher altitude (độ cao lớn hơn)
+            chai3d::cMatrix3d rZ, rY;
+            rZ.setAxisAngleRotationDeg(chai3d::cVector3d(0, 0, 1), -90.0);
+            rY.setAxisAngleRotationDeg(chai3d::cVector3d(0, 1, 0), -90.0);
+            preRot = rY * rZ;
+        }
+        
+        // Determinate linear path along the X-axis (Đường thẳng cố định dọc trục X)
+        // Y is strictly set to 0.0 to eliminate lateral randomness
+        std::vector<chai3d::cVector3d> fixedPath = {
+            chai3d::cVector3d(15.0, 0.0, pathZ),
+            chai3d::cVector3d(-15.0, 0.0, pathZ)
+        };
+
+        Enemy* newEnemy = new Enemy(m_world, models[modelIndex], fixedPath, speed, scale, preRot);
+        m_enemies.push_back(newEnemy);
+
+        newEnemy->setShowFrame(true, 1.0); // Show local axes for debugging
+
+        m_spawnCounter++;
+        m_enemySpawnTimer = 1.0 + (rand() % 25) / 10.0; 
+    }
+
+    // 4. Enemy Update & Deallocation (Cập nhật & thu hồi bộ nhớ)
+    for (auto it = m_enemies.begin(); it != m_enemies.end(); ) {
+        Enemy* e = *it;
+        if (e == nullptr) {
+            it = m_enemies.erase(it);
+            continue;
+        }
+
+        e->update(dt);
+
+        if (e->hasReachedEnd()) {
+            delete e;
+            it = m_enemies.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void Game::render() {
@@ -302,7 +407,7 @@ void Game::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 
     // Thu phóng (Zoom in / Zoom out)
     game->m_camRadius -= yoffset * 1.0;
-    game->m_camRadius = chai3d::cClamp(game->m_camRadius, 3.0, 40.0); // Giới hạn tầm zoom
+    game->m_camRadius = chai3d::cClamp(game->m_camRadius, 3.0, 100.0); // Giới hạn tầm zoom
 
     game->updateCamera();
 }

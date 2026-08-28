@@ -6,6 +6,7 @@
 #include "Tower.h"
 #include "Projectile.h"
 #include <vector>
+#include "Enemy.h"
 
 
 class Game {
@@ -48,7 +49,11 @@ private:
     std::vector<Projectile*> m_projectiles;
     double m_fireCooldown = 0.0;
 
-
+private:
+    std::vector<Enemy*> m_enemies;
+    std::vector<chai3d::cVector3d> m_pathWaypoints;
+    double m_enemySpawnTimer = 0.0;
+    int m_spawnCounter = 0;
 
 private:
 // Thêm các biến quỹ đạo Camera
