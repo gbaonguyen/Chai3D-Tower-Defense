@@ -11,6 +11,10 @@ public:
     void update(double dt);
     bool isExpired() const;
 
+    chai3d::cMultiMesh* getMesh() const { return m_mesh; }
+    double getCollisionRadius() const { return m_collisionRadius; }
+    void kill() { m_lifeTime = m_maxLifeTime; } // Mark the projectile as "killed" or "removed"
+
 private:
     chai3d::cWorld* m_world;
     chai3d::cMultiMesh* m_mesh;   // Mô hình 3D của tên lửa
@@ -18,4 +22,6 @@ private:
     
     double m_lifeTime;
     double m_maxLifeTime;
+
+    double m_collisionRadius; // Bán kính va chạm (collision radius)
 };

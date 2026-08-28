@@ -236,7 +236,7 @@ void Game::update(double dt) {
     }
 
 
-m_enemySpawnTimer -= dt;
+    m_enemySpawnTimer -= dt;
     if (m_enemySpawnTimer <= 0.0) { 
         std::string models[] = {
             "../assets/models/tank_project.obj", // Index 0
@@ -320,6 +320,41 @@ m_enemySpawnTimer -= dt;
             it = m_enemies.erase(it);
         } else {
             ++it;
+        }
+    }
+
+    m_world->computeGlobalPositions(true);
+
+    for (auto* p : m_projectiles) {
+        if (p->isExpired()) continue;
+        
+        chai3d::cVector3d pPos = p->getMesh()->getGlobalPos();
+        double pRadius = p->getCollisionRadius();
+
+        for (auto* e : m_enemies) {
+            if (e->hasReachedEnd()) continue;
+
+            chai3d::cVector3d ePos = e->getMesh()->getGlobalPos();
+            double eRadius = e->getCollisionRadius();
+
+            // Tính khoảng cách bình phương (Squared distance)
+            double distSq = (pPos - ePos).lengthsq();
+            
+            // Tính tổng bán kính bình phương (Sum of radii squared)
+            double radiusSum = pRadius + eRadius;
+            double radiusSumSq = radiusSum * radiusSum;
+
+            if (distSq <= radiusSumSq) {
+                // Va chạm thành công!
+                std::cout << "[COLLISION] Bắn trúng kẻ địch!" << std::endl;
+                
+                // Tiêu diệt cả hai (Đánh dấu để bộ dọn rác tự xóa ở frame tiếp theo)
+                p->kill(); 
+                e->kill(); 
+                
+                // Mỗi viên đạn chỉ trúng 1 quái, thoát vòng lặp kẻ địch hiện tại
+                break; 
+            }
         }
     }
 }

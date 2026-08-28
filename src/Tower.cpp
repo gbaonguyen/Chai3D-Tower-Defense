@@ -22,41 +22,6 @@ Tower::~Tower() {
     }
 }
 
-// bool Tower::loadBase(const std::string& filePath) {
-//     if (!m_baseMesh) return false;
-
-//     bool success = m_baseMesh->loadFromFile(filePath);
-//     if (!success) {
-//         std::cerr << "[ERROR] Khong tim thay file: " << filePath << std::endl;
-//         return false;
-//     }
-
-//     // Xoay -90 độ quanh trục X để lật úp phần chân đế tròn xuống sàn
-//     m_baseMesh->rotateAboutGlobalAxisDeg(chai3d::cVector3d(1, 0, 0), -90.0);
-
-//     // Tính lại Bounding Box
-//     m_baseMesh->computeBoundaryBox(true);
-//     chai3d::cVector3d center = m_baseMesh->getBoundaryCenter();
-//     chai3d::cVector3d minBox = m_baseMesh->getBoundaryMin();
-
-//     // Dịch tâm X, Y về (0,0) và đưa mặt đáy sát Z = 0
-//     chai3d::cVector3d offset(-center.x(), -center.y(), -minBox.z());
-//     m_baseMesh->rotateAboutGlobalAxisDeg(chai3d::cVector3d(1, 0, 0), 180);
-
-//     for (unsigned int i = 0; i < m_baseMesh->getNumMeshes(); ++i) {
-//         chai3d::cMesh* subMesh = m_baseMesh->getMesh(i);
-//         if (subMesh != nullptr) {
-//             subMesh->offsetVertices(offset);
-//         }
-//     }
-
-//     m_baseMesh->computeBoundaryBox(true);
-//     m_baseMesh->computeAllNormals();
-//     m_baseMesh->setUseMaterial(true);
-
-//     return true;
-// }
-
 bool Tower::loadBase(const std::string& filePath) {
     if (!m_baseMesh) return false;
 
@@ -82,7 +47,7 @@ bool Tower::loadBase(const std::string& filePath) {
         }
     }
 
-    m_baseMesh->setShowFrame(true); // Hiển thị trục tọa độ cho bệ tháp
+    m_baseMesh->setShowFrame(false); // Hiển thị trục tọa độ cho bệ tháp
 
     // 2. Tính toán lại Bounding Box trên hệ đỉnh đã xoay
     m_baseMesh->computeBoundaryBox(true);
@@ -144,11 +109,11 @@ bool Tower::loadBarrel(const std::string& filePath, double joinHeightOffset) {
         }
     }
 
-    m_barrelMesh->setShowFrame(true); // Hiển thị trục tọa độ cho nòng súng
+    m_barrelMesh->setShowFrame(false); // Hiển thị trục tọa độ cho nòng súng
     
     // 2. Tính lại Bounding Box của nòng súng sau khi xoay đỉnh
     m_barrelMesh->computeBoundaryBox(true);
-    m_barrelMesh->setShowBoundaryBox(true); // Hiển thị Bounding Box của nòng súng
+    m_barrelMesh->setShowBoundaryBox(false); // Hiển thị Bounding Box của nòng súng
     chai3d::cVector3d center = m_barrelMesh->getBoundaryCenter();
     chai3d::cVector3d minBox = m_barrelMesh->getBoundaryMin();
     chai3d::cVector3d maxBox = m_barrelMesh->getBoundaryMax();

@@ -14,7 +14,7 @@ Enemy::Enemy(chai3d::cWorld* world, const std::string& modelPath, const std::vec
 
     m_mesh->scale(scale);
 
-    // 1. Áp dụng tiền xử lý xoay (Vertex Pre-rotation) để chuẩn hóa hướng mũi model về trục +X
+    // 1. Áp dụng tiền xử lý xoay (Vertex Pre-rotation)
     for (unsigned int i = 0; i < m_mesh->getNumMeshes(); ++i) {
         chai3d::cMesh* subMesh = m_mesh->getMesh(i);
         if (subMesh != nullptr) {
@@ -22,24 +22,34 @@ Enemy::Enemy(chai3d::cWorld* world, const std::string& modelPath, const std::vec
                 chai3d::cVector3d pos = subMesh->m_vertices->getLocalPos(v);
                 subMesh->m_vertices->setLocalPos(v, preRotation * pos);
             }
+            subMesh->markForUpdate(); // Đánh dấu cập nhật GPU
         }
     }
 
-    // 2. Tính toán Bounding Box và dời model lên mặt đất (như code ở bước trước)
+    // 2. DYNAMIC CENTERING (Đưa vật về 0, 0, 0)
     m_mesh->computeBoundaryBox(true);
+    chai3d::cVector3d center = m_mesh->getBoundaryCenter();
     double minZ = m_mesh->getBoundaryMin().z();
-    chai3d::cVector3d offset(0.0, 0.0, -minZ); 
+    
+    // Tạo vector ngược hướng để dời tâm hình học về gốc và đưa mặt đáy lên Z = 0
+    chai3d::cVector3d offset(-center.x(), -center.y(), -minZ); 
     
     for (unsigned int i = 0; i < m_mesh->getNumMeshes(); ++i) {
         chai3d::cMesh* subMesh = m_mesh->getMesh(i);
         if (subMesh != nullptr) {
             subMesh->offsetVertices(offset);
+            subMesh->markForUpdate(); // Đánh dấu cập nhật GPU
         }
     }
     
     m_mesh->computeBoundaryBox(true); 
+    m_mesh->setShowBoundaryBox(true);
     m_mesh->computeAllNormals();
     m_mesh->setUseMaterial(true);
+
+    // 3. TÍNH BÁN KÍNH VA CHẠM (Bounding Sphere Radius)
+    // Dùng nửa độ dài đường chéo Bounding Box làm bán kính
+    m_collisionRadius = m_mesh->getBoundaryMax().length() * 0.5;
 
     // Initialize the starting coordinate (tọa độ xuất phát)
     if (!m_waypoints.empty()) {

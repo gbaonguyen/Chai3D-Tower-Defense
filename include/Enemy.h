@@ -15,6 +15,11 @@ public:
     // Check if the entity has successfully traversed (di chuyển qua) all waypoints
     bool hasReachedEnd() const { return m_reachedEnd; }
     void setShowFrame(bool show, double size); 
+
+    chai3d::cMultiMesh* getMesh() const { return m_mesh; }
+    double getCollisionRadius() const { return m_collisionRadius; }
+    void kill() { m_reachedEnd = true; } // Mark the entity as "killed" or "removed"
+
 private:
     chai3d::cWorld* m_world;
     chai3d::cMultiMesh* m_mesh;
@@ -24,4 +29,6 @@ private:
     
     double m_speed;
     bool m_reachedEnd;
+
+    double m_collisionRadius; // Radius for collision detection
 };

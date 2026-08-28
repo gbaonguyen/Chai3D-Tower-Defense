@@ -17,6 +17,11 @@ Projectile::Projectile(chai3d::cWorld* world, const std::string& modelPath, cons
     // 1. TĂNG SCALE: Thử số lớn hơn (ví dụ 1.0 hoặc 0.5) để dễ nhìn thấy trước
     m_mesh->scale(0.5); 
 
+    // Tính Bounding Box và lấy bán kính cho đạn
+    m_mesh->computeBoundaryBox(true);
+    m_mesh->setShowBoundaryBox(true); // Hiển thị Bounding Box để kiểm tra
+    m_collisionRadius = m_mesh->getBoundaryMax().length() * 0.5;
+
     // QUAN TRỌNG: Bật tính toán vật liệu để ánh sáng chiếu vào không bị đen thui
     m_mesh->computeAllNormals();
     m_mesh->setUseMaterial(true);
