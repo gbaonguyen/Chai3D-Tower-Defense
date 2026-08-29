@@ -11,6 +11,7 @@ Projectile::Projectile(chai3d::cWorld* world, const std::string& modelPath, cons
 
     m_mesh->computeAllNormals();
     m_mesh->setUseMaterial(true);
+    m_mesh->setShowBoundaryBox(true, true);
 
     // Normalize the target vector to ensure uniform velocity (Chuẩn hóa vector đích để đảm bảo vận tốc đồng đều)
     chai3d::cVector3d normDir = direction;
@@ -42,11 +43,8 @@ Projectile::Projectile(chai3d::cWorld* world, const std::string& modelPath, cons
 }
 
 Projectile::~Projectile() {
-    // Automatically detach (tự động gỡ bỏ) the mesh to prevent memory leaks
-    if (m_mesh != nullptr) {
-        if (m_mesh->getParent() != nullptr) {
-            m_mesh->getParent()->removeChild(m_mesh);
-        }
+    if (m_world != nullptr && m_mesh != nullptr) {
+        m_world->removeChild(m_mesh);
         delete m_mesh;
         m_mesh = nullptr;
     }

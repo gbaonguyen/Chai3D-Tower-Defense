@@ -236,7 +236,6 @@ void Game::update(double dt) {
     if (m_fireCooldown > 0.0) {
         m_fireCooldown -= dt;
     }
-
     // 2. Logic sinh kẻ địch ngẫu nhiên theo thời gian
     m_enemySpawnTimer -= dt;
     if (m_enemySpawnTimer <= 0.0) {
@@ -244,6 +243,7 @@ void Game::update(double dt) {
         // Đặt lại thời gian đếm ngược (Reset the timer)
         m_enemySpawnTimer = m_enemySpawnInterval; 
     }
+
 
     // Xác định bán kính tối đa của bản đồ (có thể tùy chỉnh theo kích thước sân đấu của bạn)
     const double MAP_RADIUS = 150.0; 
@@ -300,6 +300,53 @@ void Game::update(double dt) {
             ++it;
         }
     }
+
+
+    // 2. Collision Detection (Thuật toán phát hiện va chạm)
+    for (auto p : m_projectiles) {
+        if (p->m_isDead) continue; // Bỏ qua nếu đạn đã nổ
+
+        for (auto e : m_enemies) {
+            if (e->m_isDead) continue; // Bỏ qua nếu quái đã chết
+
+            // Tính vector khoảng cách giữa 2 tâm
+            chai3d::cVector3d diff = p->getPosition() - e->getPosition();
+            double distance = diff.length();
+            double sumRadius = p->getRadius() + e->getRadius();
+
+            // Kích hoạt nổ nếu 2 khối cầu giao nhau (Intersection)
+            if (distance < sumRadius) {
+                p->m_isDead = true; // Đánh dấu đạn bị hủy
+                e->m_isDead = true; // Đánh dấu quái bị tiêu diệt
+                
+                std::cout << "[COLLISION] Muc tieu bi tieu diet tai X: " 
+                          << e->getPosition().x() << std::endl;
+                
+                break; // Đảm bảo 1 viên đạn chỉ phá hủy 1 mục tiêu
+            }
+        }
+    }
+
+    // 3. Quét và giải phóng bộ nhớ (Mark-and-Sweep Garbage Collection)
+    for (auto it = m_projectiles.begin(); it != m_projectiles.end(); ) {
+        if ((*it)->m_isDead || (*it)->isExpired()) {
+            delete *it;
+            it = m_projectiles.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    for (auto it = m_enemies.begin(); it != m_enemies.end(); ) {
+        if ((*it)->m_isDead || (*it)->hasReachedDestination()) {
+            delete *it;
+            it = m_enemies.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    
 }
 
 void Game::spawnRandomEnemy() {
@@ -309,8 +356,8 @@ void Game::spawnRandomEnemy() {
     EnemyConfig config;
     std::vector<chai3d::cVector3d> path;
 
-    // Thiết lập chung: Tất cả đều đi từ X=35.0 tiến về X=3.0 trên trục +Ox
-    double startX = 35.0;
+    // Thiết lập chung: Tất cả đều đi từ X=70.0 tiến về X=3.0 trên trục +Ox
+    double startX = 70.0;
     double endX = 3.0;
 
     switch (enemyType) {
@@ -320,15 +367,15 @@ void Game::spawnRandomEnemy() {
             break;
         case 1: // Aircraft 1 (Tầm thấp)
             path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
-            config = {"../assets/new_models/aircraft_1.obj", 0.2, 3.0, 2.5};
+            config = {"../assets/new_models/aircraft_1.obj", 0.2, 10.0, 2.5};
             break;
         case 2: // Aircraft 2 (Tầm trung)
             path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
-            config = {"../assets/new_models/aircraft_2.obj", 1.0, 6.0, 3.0};
+            config = {"../assets/new_models/aircraft_2.obj", 1.0, 5.0, 3.0};
             break;
         case 3: // Spaceship (Tầm cao)
             path = { chai3d::cVector3d(startX, 0.0, 0.0), chai3d::cVector3d(endX, 0.0, 0.0) };
-            config = {"../assets/new_models/space_ship.obj", 1.0, 9.0, 4.0};
+            config = {"../assets/new_models/space_ship.obj", 1.0, 7.5, 4.0};
             break;
     }
 

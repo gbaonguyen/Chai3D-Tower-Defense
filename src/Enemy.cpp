@@ -13,6 +13,8 @@ Enemy::Enemy(chai3d::cWorld* world, const EnemyConfig& config, const std::vector
     m_mesh->scale(m_config.scale);
     m_mesh->computeAllNormals();
     m_mesh->setUseMaterial(true);
+    m_mesh->setShowBoundaryBox(true, true);
+    m_mesh->setShowFrame(true);
 
     if (!m_path.empty()) {
         chai3d::cVector3d startPos = m_path[0];
@@ -24,9 +26,11 @@ Enemy::Enemy(chai3d::cWorld* world, const EnemyConfig& config, const std::vector
 }
 
 Enemy::~Enemy() {
-    if (m_mesh && m_mesh->getParent()) {
-        m_mesh->getParent()->removeChild(m_mesh);
+    if (m_world != nullptr && m_mesh != nullptr) {
+        // Ép buộc thế giới 3D gỡ bỏ mô hình này
+        m_world->removeChild(m_mesh); 
         delete m_mesh;
+        m_mesh = nullptr;
     }
 }
 
