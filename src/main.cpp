@@ -1,7 +1,7 @@
 #include "Game.h"
 #include <iostream>
 
-int main(int argc, char* argv[]) {
+int main() {
     Game game;
 
     if (!game.init()) {
@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    std::cout << "Starting Tower Defense Game loop. Press ESC to quit." << std::endl;
+    std::cout << "Starting the Game. Press ESC to quit." << std::endl;
     game.run();
 
     return 0;
