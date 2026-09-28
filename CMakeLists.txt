@@ -13,7 +13,8 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 
 # Biên dịch mã nguồn GLFW
-add_subdirectory(externals/glfw-3.5.1)
+# add_subdirectory(externals/glfw-3.5.1)
+find_package(glfw3 REQUIRED)
 
 set(CHAI3D_DIR "${CMAKE_CURRENT_SOURCE_DIR}/externals/chai3d")
 

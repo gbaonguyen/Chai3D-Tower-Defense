@@ -66,7 +66,8 @@ Dynamic heap allocations are rigorously managed. The `cleanup()` function and cl
 
 ## 5. Future Improvements
 Future iterations of this simulation could integrate several advanced paradigms:
-* **Health Point (HP) Mechanics:** Implementing localized damage rather than immediate destruction.
-* **Particle Systems:** Rendering dynamic volumetric explosions upon impact.
-* **Turret Variety:** Multiple turret types with distinct ballistic profiles.
-* **Spatial Partitioning:** Optimizing the $O(N \times M)$ collision detection algorithm by implementing **BVH (Bounding Volume Hierarchies)** or **Octrees** to efficiently cull distant entities.
+* **Health point (HP) mechanics:** Implementing localized damage rather than immediate destruction.
+* **Particle systems:** Rendering dynamic volumetric explosions upon impact.
+* **Turret variety:** Multiple turret types with distinct ballistic profiles.
+* **Spatial partitioning:** Optimizing the $O(N \times M)$ collision detection algorithm by implementing **BVH (Bounding Volume Hierarchies)** or **Octrees** to efficiently cull distant entities.
+* **Optimizing the spawn phase:** Get a better FPS when an new enemy spawn, minimize the FPS drops
